@@ -12,30 +12,17 @@ import json
 import numpy as np
 import pandas as pd
 import pickle
-#import re
-#import time
-#from glob import glob
-#from PIL import Image
-#import matplotlib.pyplot as plt
-#from sklearn.model_selection import train_test_split
-#from sklearn.utils import shuffle
-
-
 from os import listdir
-from pickle import load
 from numpy import array
 from numpy import argmax
 from pandas import DataFrame
 from nltk.translate.bleu_score import corpus_bleu, sentence_bleu
-
 import keras
-
 from keras.applications.vgg16 import VGG16
 from keras.preprocessing.image import load_img
 from keras.preprocessing.image import img_to_array
 from keras.applications.vgg16 import preprocess_input
 from keras.layers import Input
-
 from keras.utils import plot_model
 from keras.models import Model
 from keras.layers import Input
@@ -47,14 +34,27 @@ from keras.layers import TimeDistributed
 from keras.layers import Embedding
 from keras.layers.merge import concatenate
 from keras.layers.pooling import GlobalMaxPooling2D
-
 from keras.preprocessing.text import Tokenizer
 
+
 def preprocess(text, start="startsequence", end="endsequence"):
+    """
+    Preprocess the text of a caption
+    :param text:
+    :param start: start token
+    :param end: end token
+    :return: the preprocessed output
+    """
     text = text.lower()
     return start + ' ' + text + ' ' + end
 
+
 def encode(img_path):
+    """
+    Encode an image using the VGG19 CNN
+    :param img_path: the image path
+    :return: the embedding
+    """
     image = keras.preprocessing.image.load_img(img_path, target_size=(224, 224))
     # convert the image pixels to a numpy array
     image = keras.preprocessing.image.img_to_array(image)
@@ -65,6 +65,15 @@ def encode(img_path):
 
 
 def create_sequences(tokenizer, caption, image1, image2, max_length):
+    """
+    Generate the sequences given two images and their caption
+    :param tokenizer:
+    :param caption:
+    :param image1:
+    :param image2:
+    :param max_length:
+    :return:
+    """
     Ximages1, Ximages2, XSeq, y = list(), list(), list(), list()
     vocab_size = len(tokenizer.word_index) + 1
     # integer encode the description
@@ -84,8 +93,15 @@ def create_sequences(tokenizer, caption, image1, image2, max_length):
         y.append(out_seq)
     return [Ximages1, Ximages2, XSeq, y]
 
-# define the captioning model
+
 def define_model(vocab_size, max_length, loss="categorical_crossentropy"):
+    """
+
+    :param vocab_size:
+    :param max_length:
+    :param loss:
+    :return:
+    """
     # feature extractor (encoder)
     inputs1 = Input(shape=(7, 7, 512))
     inputs2 = Input(shape=(7, 7, 512))
@@ -115,16 +131,28 @@ def define_model(vocab_size, max_length, loss="categorical_crossentropy"):
     return model
 
 
-# map an integer to a word
 def word_for_id(integer, tokenizer):
+    """
+    Map an integer to a word
+    :param integer:
+    :param tokenizer:
+    :return:
+    """
     for word, index in tokenizer.word_index.items():
         if index == integer:
             return word
     return None
 
 
-# generate a description for an image
 def generate_desc(model, tokenizer, photos, max_length):
+    """
+    Generate a description for an image
+    :param model:
+    :param tokenizer:
+    :param photos:
+    :param max_length:
+    :return:
+    """
     # seed the generation process
     in_text = start
     # iterate over the whole length of the sequence
@@ -150,8 +178,16 @@ def generate_desc(model, tokenizer, photos, max_length):
     return in_text
 
 
-# generate a description for an image
 def generate_desc_beam(model, tokenizer, photos, max_length, beam_size=10):
+    """
+    Generate a description for an image, using beam search
+    :param model:
+    :param tokenizer:
+    :param photos:
+    :param max_length:
+    :param beam_size:
+    :return:
+    """
     in_text = [start]
     start_word = [[start, 0.0]]
     while len(start_word[0][0]) < max_length:
@@ -182,8 +218,16 @@ def generate_desc_beam(model, tokenizer, photos, max_length, beam_size=10):
     return final_caption
 
 
-# evaluate the skill of the model
 def evaluate_model(model, descriptions, photos, tokenizer, max_length):
+    """
+    Evaluate the skill of the model
+    :param model:
+    :param descriptions:
+    :param photos:
+    :param tokenizer:
+    :param max_length:
+    :return:
+    """
     actual, predicted = list(), list()
     # step over the whole set
     for key, desc in descriptions.items():
@@ -197,8 +241,18 @@ def evaluate_model(model, descriptions, photos, tokenizer, max_length):
     return bleu
 
 
-# data generator, intended to be used in a call to model.fit_generator()
 def data_generator(captions, image_tuples, tokenizer, max_length, n_step, validation=False, validation_num=None):
+    """
+    Data generator, intended to be used in a call to model.fit_generator()
+    :param captions:
+    :param image_tuples:
+    :param tokenizer:
+    :param max_length:
+    :param n_step:
+    :param validation:
+    :param validation_num:
+    :return:
+    """
     while 1:
         # iterate over patients - hold some for validation
         patients = list(captions.keys())
@@ -229,8 +283,18 @@ def data_generator(captions, image_tuples, tokenizer, max_length, n_step, valida
             yield [array(Ximages1), array(Ximages2), array(XSeq)], array(y)
 
 
-# evaluate the skill of the model
 def evaluate_n_visualise(model, descriptions, photos, tokenizer, max_length, size=5, beam=0):
+    """
+    Evaluate the skill of the model
+    :param model:
+    :param descriptions:
+    :param photos:
+    :param tokenizer:
+    :param max_length:
+    :param size:
+    :param beam:
+    :return:
+    """
     actual, predicted = list(), list()
     # step over the whole set
     for key, desc in descriptions.items():
@@ -251,6 +315,8 @@ def evaluate_n_visualise(model, descriptions, photos, tokenizer, max_length, siz
     return bleu
 
 
+# Scripting...
+#todo: this should turn into proper methods
 
 DATA_PATH = "iu_xray/"
 DATA_IMAGES_PATH = os.path.join(DATA_PATH, "iu_xray_images")
